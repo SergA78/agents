@@ -1,0 +1,36 @@
+# =============================================================================
+# SearXNG settings — Competitor Intelligence Agent
+# Минимальная рабочая конфигурация. Приложение запрашивает SearXNG по HTTP API,
+# поэтому в search.formats ОБЯЗАТЕЛЬНО должен присутствовать "json".
+# =============================================================================
+
+general:
+  debug: false
+  instance_name: "CI Agent SearXNG"
+  enable_metrics: false
+
+server:
+  # ВАЖНО: замените secret_key на собственное случайное значение!
+  # Сгенерировать: openssl rand -hex 32
+  secret_key: "change-me-please-use-a-long-random-secret"
+  bind_address: "0.0.0.0"
+  port: 8080
+  base_url: false
+  limiter: false
+  image_proxy: false
+  method: "GET"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  # Критично: включаем JSON, чтобы приложение могло получать результаты по API.
+  formats:
+    - html
+    - json
+
+ui:
+  static_use_hash: true
+
+# Используем движки по умолчанию (engines не переопределяем),
+# чтобы поиск работал "из коробки".

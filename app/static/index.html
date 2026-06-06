@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Агент конкурентной разведки — Чат</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1 class="app-title">Агент конкурентной разведки</h1>
+      <p class="app-subtitle">Задавайте аналитические вопросы по собранным данным о конкурентах.</p>
+    </header>
+
+    <main class="chat" aria-label="Чат с агентом">
+      <section class="controls" aria-label="Параметры запроса">
+        <label class="control">
+          <span class="control-label">Компания</span>
+          <select id="company">
+            <option value="">Все компании</option>
+            <option value="Apple">Apple</option>
+            <option value="Microsoft">Microsoft</option>
+          </select>
+        </label>
+        <label class="control">
+          <span class="control-label">Период</span>
+          <input id="period" type="number" min="1" placeholder="Период, дней (опц.)">
+        </label>
+      </section>
+
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+      <form id="composer" class="composer" aria-label="Отправка сообщения">
+        <textarea
+          id="prompt"
+          class="prompt"
+          rows="2"
+          placeholder="Введите ваш аналитический запрос… (Enter — отправить, Shift+Enter — новая строка)"
+          aria-label="Текст запроса"></textarea>
+        <button id="send" type="submit" class="send-btn">Отправить</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

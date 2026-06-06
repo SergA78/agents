@@ -1,0 +1,288 @@
+/* Competitor Intelligence Agent — chat UI styles (light theme, responsive). */
+
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --border: #e2e6ec;
+  --text: #1c2430;
+  --text-muted: #6b7685;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --user-bubble: #2563eb;
+  --user-text: #ffffff;
+  --assistant-bubble: #eef1f6;
+  --assistant-text: #1c2430;
+  --error-bubble: #fdeaea;
+  --error-text: #a12626;
+  --radius: 14px;
+  --shadow: 0 1px 3px rgba(20, 30, 50, 0.08), 0 6px 20px rgba(20, 30, 50, 0.06);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 16px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- header ---------- */
+.app-header {
+  padding: 8px 4px 16px;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.app-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+/* ---------- chat shell ---------- */
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* ---------- controls ---------- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #fafbfc;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
+.control-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.control select,
+.control input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+}
+
+.control select:focus,
+.control input:focus,
+.prompt:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* ---------- messages ---------- */
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+}
+
+.msg-user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.msg-assistant,
+.msg-error {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.bubble {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.msg-user .bubble {
+  background: var(--user-bubble);
+  color: var(--user-text);
+  border-bottom-right-radius: 4px;
+}
+
+.msg-assistant .bubble {
+  background: var(--assistant-bubble);
+  color: var(--assistant-text);
+  border-bottom-left-radius: 4px;
+}
+
+.msg-error .bubble {
+  background: var(--error-bubble);
+  color: var(--error-text);
+  border-bottom-left-radius: 4px;
+}
+
+/* ---------- sources ---------- */
+.sources {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sources-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.sources li a {
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.sources li a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- typing / loading indicator ---------- */
+.typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.5;
+  animation: blink 1.2s infinite ease-in-out;
+}
+
+.typing .dot:nth-child(2) { animation-delay: 0.2s; }
+.typing .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* ---------- composer ---------- */
+.composer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: #fafbfc;
+  align-items: flex-end;
+}
+
+.prompt {
+  flex: 1;
+  resize: vertical;
+  min-height: 44px;
+  max-height: 180px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.send-btn {
+  flex: 0 0 auto;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.send-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 600px) {
+  .app {
+    padding: 8px;
+  }
+  .msg {
+    max-width: 92%;
+  }
+  .controls {
+    flex-direction: column;
+  }
+  .send-btn {
+    padding: 10px 14px;
+  }
+}

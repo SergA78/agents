@@ -1,0 +1,191 @@
+# =============================================================================
+# Competitor Intelligence Agent — Docker Compose
+# =============================================================================
+
+services:
+  # ── PostgreSQL + pgvector (основная БД приложения / RAG store) ──────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ci_agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ci_agent_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-ci_agent}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ci_agent} -d ${POSTGRES_DB:-ci_agent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ci_net
+
+  # ── SearXNG (метапоисковик, отдаёт JSON по HTTP API) ────────────────────────
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      # Базовый публичный URL экземпляра SearXNG
+      SEARXNG_BASE_URL: http://localhost:8080/
+      # Путь к файлу настроек внутри контейнера
+      SEARXNG_SETTINGS_PATH: /etc/searxng/settings.yml
+    ports:
+      - "8080:8080"
+    networks:
+      - ci_net
+
+  # ── PostgreSQL для Langfuse (отдельная БД) ──────────────────────────────────
+  langfuse-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ci_net
+
+  # ── Langfuse (трассировка / наблюдаемость, веб-интерфейс) ───────────────────
+  langfuse-web:
+    image: langfuse/langfuse:2
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3000
+      # Секрет для NextAuth — замените на собственное случайное значение
+      NEXTAUTH_SECRET: change-me-nextauth-secret
+      # Соль для хэширования — замените на собственное случайное значение
+      SALT: change-me-salt
+      # Ключ шифрования: ОБЯЗАТЕЛЬНО 64 hex-символа (32 байта).
+      # Сгенерировать: openssl rand -hex 32
+      ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      TELEMETRY_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    networks:
+      - ci_net
+
+  # ── Ollama (опциональный локальный LLM-провайдер, OpenAI-совместимый API) ───
+  # Запускается ТОЛЬКО при активации профиля "ollama":
+  #     docker compose --profile ollama up -d
+  # После старта необходимо скачать нужные модели, например:
+  #     docker compose exec ollama ollama pull llama3.1
+  #     docker compose exec ollama ollama pull nomic-embed-text
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ci_net
+    # Профиль делает сервис опциональным: без --profile ollama он не стартует.
+    profiles: ["ollama"]
+    # ── GPU (опционально) ─────────────────────────────────────────────────────
+    # Раскомментируйте блок ниже, чтобы дать Ollama доступ к NVIDIA GPU
+    # (требуется установленный nvidia-container-toolkit). GPU не обязателен —
+    # без него Ollama работает на CPU.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Приложение (FastAPI + LangGraph агент) ──────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    # ПРИМЕЧАНИЕ: сервис ollama НЕ указан в depends_on — он опционален и
+    # включается отдельным профилем. Чтобы задействовать Ollama, запустите
+    #     docker compose --profile ollama up -d
+    # и выставьте CHAT_PROVIDER / EMBEDDING_PROVIDER (=ollama) в .env.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+      langfuse-web:
+        condition: service_started
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      # Монтируем код для удобства разработки (hot-reload)
+      - ./app:/code/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    networks:
+      - ci_net
+
+  # ── Тест-раннер (pytest-набор для приложения) ───────────────────────────────
+  # Запускается ТОЛЬКО с профилем "test" — обычный `docker compose up` его НЕ
+  # стартует. Запуск всей тестовой сюиты (одноразовый прогон):
+  #     docker compose --profile test run --rm tests
+  # Образ собирается из того же Dockerfile, что и app (pytest уже внутри образа,
+  # т.к. зависимости лежат в requirements.txt).
+  # ВАЖНО: интеграционные / e2e / LLM-тесты сами пропускаются (skip), если
+  # нужный внешний ресурс/сервис недоступен. Для LLM-тестов требуется валидный
+  # CHAT_PROVIDER / OPENAI_API_KEY в .env (или запущенный Ollama:
+  #     docker compose --profile ollama up -d).
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Интеграционные тесты обращаются к app по внутреннему DNS-имени сети
+      APP_TEST_BASE_URL: http://app:8000
+      PYTHONPATH: /code
+    volumes:
+      # Монтируем код и тесты, чтобы раннер видел сюиту без пересборки образа
+      - ./app:/code/app
+      - ./tests:/code/tests
+      - ./pytest.ini:/code/pytest.ini
+    working_dir: /code
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+      searxng:
+        condition: service_started
+    command: ["pytest"]
+    # Одноразовый раннер — не перезапускаем после завершения
+    restart: "no"
+    networks:
+      - ci_net
+
+# ── Именованные тома ─────────────────────────────────────────────────────────
+volumes:
+  pgdata:
+  langfuse_pgdata:
+  ollama_data:
+
+# ── Сеть ─────────────────────────────────────────────────────────────────────
+networks:
+  ci_net:
+    driver: bridge
