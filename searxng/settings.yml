@@ -4,6 +4,10 @@
 # поэтому в search.formats ОБЯЗАТЕЛЬНО должен присутствовать "json".
 # =============================================================================
 
+# Берём за основу штатные настройки SearXNG и переопределяем только нужное.
+# Это позволяет корректно подхватить базу движков (engines) ниже.
+use_default_settings: true
+
 general:
   debug: false
   instance_name: "CI Agent SearXNG"
@@ -32,5 +36,44 @@ search:
 ui:
   static_use_hash: true
 
-# Используем движки по умолчанию (engines не переопределяем),
-# чтобы поиск работал "из коробки".
+# ── Параметры исходящих запросов к движкам ───────────────────────────────────
+# Разумные таймауты, чтобы временно недоступный/тормозящий движок не блокировал
+# весь поиск. Если один движок ответит ошибкой/429, остальные всё равно вернут
+# результаты, а проблемный движок SearXNG временно пометит как suspended.
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  pool_connections: 100
+  pool_maxsize: 20
+
+# Явно включаем набор надёжных универсальных движков для категории "general",
+# которую всегда использует приложение (см. SearxngClient). disabled: false —
+# движок активен и участвует в поиске.
+#
+# ВАЖНО про логи запуска:
+#   • ahmia / torch — onion-движки (категория onions), требуют Tor-прокси.
+#     Без Tor они падают при загрузке ("loading engine ... failed"). Отключаем
+#     их явно, чтобы убрать ошибки на старте.
+#   • brave / google / bing — публичные движки, агрессивно ограничивают запросы
+#     с серверных IP ("Too many request, suspended_time=180"). Это НЕ падение
+#     сервиса: SearXNG временно отключает только проблемный движок. brave
+#     блокирует особенно жёстко — оставляем его выключенным; duckduckgo обычно
+#     самый терпимый и служит основным источником.
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: google
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: brave
+    disabled: true
+  - name: wikipedia
+    disabled: false
+  - name: qwant
+    disabled: false
+  # Onion-движки требуют Tor — отключаем, иначе ошибки загрузки на старте.
+  - name: ahmia
+    disabled: true
+  - name: torch
+    disabled: true
